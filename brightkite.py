@@ -7,7 +7,8 @@ import urllib
 __author__  = 'Jon Parise <jon@indelible.org>'
 __version__ = '0.9.0'
 
-__all__ = ['Brightkite']
+__all__ = ['Brightkite', 'BrightkiteObject', 'BrightkitePerson',
+           'BrightkitePlace']
 
 class AuthenticatingOpener(urllib.FancyURLopener):
     __slots__ = ('user', 'password')

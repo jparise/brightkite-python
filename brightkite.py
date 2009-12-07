@@ -85,6 +85,12 @@ class Brightkite:
         if raw: return l
         return [BrightkitePlace(self, d['id'], d) for d in l]
 
+    def sent_messages(self):
+        return self._get('me/sent_messages.json')
+
+    def received_messages(self):
+        return self._get('me/received_messages.json')
+
 class BrightkiteObject(object):
 
     def __init__(self, api, uuid, d=None):

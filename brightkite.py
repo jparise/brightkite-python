@@ -74,22 +74,6 @@ class Brightkite:
         if raw: return d
         return BrightkitePlace(self, uuid, d)
 
-    def place_objects(self, uuid, raw=False):
-        l = self._get('places/' + uuid + '/objects.json')
-        if raw: return l
-        return [BrightkiteObject(self, d['id'], d) for d in l]
-
-    def place_people(self, uuid, radius=None, hours_ago=None, raw=False):
-        params = {}
-        if radius is not None:
-            params['radius'] = radius
-        if hours_ago is not None:
-            params['hours_ago'] = hours_ago
-        uri = 'places/' + uuid + '/people.json' + urllib.urlencode(params)
-        l = self._get(uri)
-        if raw: return l
-        return [BrightkitePerson(self, d['id'], d) for d in l]
-
     def places(self, query, raw=False):
         l = self._get('places/search.json?q=' + query)
         if raw: return l
@@ -161,6 +145,17 @@ class BrightkitePlace(BrightkiteQueryObject):
     def objects(self, checkins=False, notes=False, photos=False, raw=False):
         uri = 'places/' + self.uuid + '/objects.json'
         return self._query(uri, checkins, notes, photos, raw=raw)
+
+    def people(self, radius=None, hours_ago=None, raw=False):
+        params = {}
+        if radius is not None:
+            params['radius'] = radius
+        if hours_ago is not None:
+            params['hours_ago'] = hours_ago
+        uri = 'places/' + self.uuid + '/people.json' + urllib.urlencode(params)
+        l = self.api._get(uri)
+        if raw: return l
+        return [BrightkitePerson(self, d['id'], d) for d in l]
 
     def placemarks(self, raw=False):
         l = self.api._get('places/' + self.uuid + '/placemarks.json')

@@ -146,6 +146,10 @@ class BrightkitePerson(BrightkiteQueryObject):
         uri = 'people/' + self.login + '/objects.json'
         return self._query(uri, checkins, notes, photos, raw=raw)
 
+    def friendship(self):
+        uri = 'people/' + self.login + '/friendship.json'
+        return self.api._get(uri)
+
 class BrightkitePlace(BrightkiteQueryObject):
 
     def objects(self, checkins=False, notes=False, photos=False, raw=False):

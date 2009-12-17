@@ -8,7 +8,7 @@ __author__  = 'Jon Parise <jon@indelible.org>'
 __version__ = '0.9.0'
 
 __all__ = ['Brightkite', 'BrightkiteObject', 'BrightkitePerson',
-           'BrightkitePlace']
+           'BrightkitePlace', 'BrightkiteConfig']
 
 class AuthenticatingOpener(urllib.FancyURLopener):
     __slots__ = ('user', 'password')
@@ -34,6 +34,9 @@ class Brightkite:
     def _post(self, uri, data):
         url = 'http://brightkite.com/' + uri
         return json.load(self.opener.open(url, data))
+
+    def _put(self, uri, key, value):
+        pass
 
     def me(self, raw=False):
         d = self._get('me.json')
@@ -90,6 +93,11 @@ class Brightkite:
 
     def received_messages(self):
         return self._get('me/received_messages.json')
+
+    def config(self, raw=False):
+        d = self._get('me/config.json')
+        if raw: return d
+        return BrightkiteConfig(self, d)
 
 class BrightkiteObject(object):
 
@@ -171,3 +179,30 @@ class BrightkitePlace(BrightkiteQueryObject):
         l = self.api._get('places/' + self.uuid + '/placemarks.json')
         if raw: return l
         return [BrightkitePlace(self, d['id'], d) for d in l]
+
+class BrightkiteConfig(object):
+
+    def __init__(self, api, d=None):
+        self.api = api
+        self.d = d or dict()
+
+    def __repr__(self):
+        return '<%s login=%s>' % (self.__class__.__name__, self.login)
+
+    def __getattr__(self, name):
+        try:
+            return self.d[name]
+        except KeyError:
+            raise AttributeError("invalid setting '%s'" % name)
+
+    def __setattr__(self, name, value):
+        if name == 'api' or name == 'd':
+            object.__setattr__(self, name, value)
+        elif name in self.d:
+            # TODO: Send the HTTP PUT request
+            self.d[name] = value
+        else:
+            raise AttributeError("invalid setting '%s'" % name)
+
+    def keys(self):
+        return self.d.keys()

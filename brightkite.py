@@ -21,7 +21,7 @@ class AuthenticatingOpener(urllib.FancyURLopener):
         return (self.user, self.password)
 
 
-class Brightkite:
+class Brightkite(object):
 
     def __init__(self, user, password):
         self.opener = AuthenticatingOpener(user, password)

@@ -7,8 +7,7 @@ import urllib
 __author__  = 'Jon Parise <jon@indelible.org>'
 __version__ = '0.9.0'
 
-__all__ = ['Brightkite', 'BrightkiteObject', 'BrightkitePerson',
-           'BrightkitePlace', 'BrightkiteConfig']
+__all__ = ['Brightkite', 'Object', 'Person', 'Place', 'Config']
 
 class AuthenticatingOpener(urllib.FancyURLopener):
     __slots__ = ('user', 'password')
@@ -41,17 +40,17 @@ class Brightkite:
     def me(self, raw=False):
         d = self._get('me.json')
         if raw: return d
-        return BrightkitePerson(self, d['id'], d)
+        return Person(self, d['id'], d)
 
     def person(self, user, raw=False):
         d = self._get('people/' + user + '.json')
         if raw: return d
-        return BrightkitePerson(self, d['id'], d)
+        return Person(self, d['id'], d)
 
     def people(self, query, raw=False):
         l = self._get('people/search.json?query=' + query)
         if raw: return l
-        return [BrightkitePerson(self, d['id'], d) for d in l]
+        return [Person(self, d['id'], d) for d in l]
 
     def friends(self, user, pending=False, raw=False):
         if pending:
@@ -59,34 +58,34 @@ class Brightkite:
         else:
             l = self._get('people/' + user + '/friends.json')
         if raw: return l
-        return [BrightkitePerson(self, d['id'], d) for d in l]
+        return [Person(self, d['id'], d) for d in l]
 
     def object(self, uuid, raw=False):
         d = self._get('objects/' + uuid + '.json')
         if raw: return d
-        return BrightkiteObject(self, uuid, d)
+        return Object(self, uuid, d)
 
     def objects(self, query, raw=False):
         l = self._get('objects/search.json?oquery=' + query)
         if raw: return l
         if type(l) is not list: l = [l]
-        return [BrightkiteObject(self, d['id'], d) for d in l]
+        return [Object(self, d['id'], d) for d in l]
 
     def place(self, uuid, raw=False):
         d = self._get('places/' + uuid + '.json')
         if raw: return d
-        return BrightkitePlace(self, uuid, d)
+        return Place(self, uuid, d)
 
     def places(self, query, raw=False):
         l = self._get('places/search.json?q=' + query)
         if raw: return l
         if type(l) is not list: l = [l]
-        return [BrightkitePlace(self, d['id'], d) for d in l]
+        return [Place(self, d['id'], d) for d in l]
 
     def placemarks(self, raw=False):
         l = self._get('me/placemarks.json')
         if raw: return l
-        return [BrightkitePlace(self, d['id'], d) for d in l]
+        return [Place(self, d['id'], d) for d in l]
 
     def sent_messages(self):
         return self._get('me/sent_messages.json')
@@ -97,9 +96,9 @@ class Brightkite:
     def config(self, raw=False):
         d = self._get('me/config.json')
         if raw: return d
-        return BrightkiteConfig(self, d)
+        return Config(self, d)
 
-class BrightkiteObject(object):
+class Object(object):
 
     def __init__(self, api, uuid, d=None):
         self.api = api
@@ -118,7 +117,7 @@ class BrightkiteObject(object):
     def keys(self):
         return self.d.keys()
 
-class BrightkiteQueryObject(BrightkiteObject):
+class QueryObject(Object):
 
     def _query(self, uri, checkins=False, notes=False, photos=False, raw=False):
         filters = []
@@ -131,7 +130,7 @@ class BrightkiteQueryObject(BrightkiteObject):
 
         l = self.api._get(uri)
         if raw: return l
-        return [BrightkiteObject(self, d['id'], d) for d in l]
+        return [Object(self, d['id'], d) for d in l]
 
     def objects(self, checkins=False, notes=False, photos=False, raw=False):
         raise NotImplementedError
@@ -145,7 +144,7 @@ class BrightkiteQueryObject(BrightkiteObject):
     def photos(self, raw=False):
         return self.objects(photos=True, raw=raw)
 
-class BrightkitePerson(BrightkiteQueryObject):
+class Person(QueryObject):
 
     def __repr__(self):
         return '<%s %s>' % (self.__class__.__name__, self.login)
@@ -158,7 +157,7 @@ class BrightkitePerson(BrightkiteQueryObject):
         uri = 'people/' + self.login + '/friendship.json'
         return self.api._get(uri)
 
-class BrightkitePlace(BrightkiteQueryObject):
+class Place(QueryObject):
 
     def objects(self, checkins=False, notes=False, photos=False, raw=False):
         uri = 'places/' + self.uuid + '/objects.json'
@@ -173,14 +172,14 @@ class BrightkitePlace(BrightkiteQueryObject):
         uri = 'places/' + self.uuid + '/people.json' + urllib.urlencode(params)
         l = self.api._get(uri)
         if raw: return l
-        return [BrightkitePerson(self, d['id'], d) for d in l]
+        return [Person(self, d['id'], d) for d in l]
 
     def placemarks(self, raw=False):
         l = self.api._get('places/' + self.uuid + '/placemarks.json')
         if raw: return l
-        return [BrightkitePlace(self, d['id'], d) for d in l]
+        return [Place(self, d['id'], d) for d in l]
 
-class BrightkiteConfig(object):
+class Config(object):
 
     def __init__(self, api, d=None):
         self.api = api

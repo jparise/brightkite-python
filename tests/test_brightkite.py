@@ -63,7 +63,7 @@ class TestBrightkite(unittest.TestCase):
         self.assertEqual(o.name, 'Brightkite')
 
     def test_places(self):
-        l = self.api.places('Burlingame')
+        l = self.api.places('Burlingame, CA')
         self.assertTrue(len(l) >= 1)
         self.assertTrue(locate(l, lambda o: o.name == 'Burlingame'))
 

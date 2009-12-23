@@ -43,16 +43,17 @@ class Brightkite(object):
         return Person(self, d['id'], d)
 
     def person(self, user, raw=False):
-        d = self._get('people/' + user + '.json')
+        d = self._get('people/' + urllib.quote(user) + '.json')
         if raw: return d
         return Person(self, d['id'], d)
 
     def people(self, query, raw=False):
-        l = self._get('people/search.json?query=' + query)
+        l = self._get('people/search.json?query=' + urllib.quote(query))
         if raw: return l
         return [Person(self, d['id'], d) for d in l]
 
     def friends(self, user, pending=False, raw=False):
+        user = urllib.quote(user)
         if pending:
             l = self._get('people/' + user + '/pending_friends.json')
         else:
@@ -61,23 +62,23 @@ class Brightkite(object):
         return [Person(self, d['id'], d) for d in l]
 
     def object(self, uuid, raw=False):
-        d = self._get('objects/' + uuid + '.json')
+        d = self._get('objects/' + urllib.quote(uuid) + '.json')
         if raw: return d
         return Object(self, uuid, d)
 
     def objects(self, query, raw=False):
-        l = self._get('objects/search.json?oquery=' + query)
+        l = self._get('objects/search.json?oquery=' + urllib.quote(query))
         if raw: return l
         if type(l) is not list: l = [l]
         return [Object(self, d['id'], d) for d in l]
 
     def place(self, uuid, raw=False):
-        d = self._get('places/' + uuid + '.json')
+        d = self._get('places/' + urllib.quote(uuid) + '.json')
         if raw: return d
         return Place(self, uuid, d)
 
     def places(self, query, raw=False):
-        l = self._get('places/search.json?q=' + query)
+        l = self._get('places/search.json?q=' + urllib.quote(query))
         if raw: return l
         if type(l) is not list: l = [l]
         return [Place(self, d['id'], d) for d in l]
@@ -150,32 +151,34 @@ class Person(QueryObject):
         return '<%s %s>' % (self.__class__.__name__, self.login)
 
     def objects(self, checkins=False, notes=False, photos=False, raw=False):
-        uri = 'people/' + self.login + '/objects.json'
+        uri = 'people/' + urllib.quote(self.login) + '/objects.json'
         return self._query(uri, checkins, notes, photos, raw=raw)
 
     def friendship(self):
-        uri = 'people/' + self.login + '/friendship.json'
+        uri = 'people/' + urllib.quote(self.login) + '/friendship.json'
         return self.api._get(uri)
 
 class Place(QueryObject):
 
     def objects(self, checkins=False, notes=False, photos=False, raw=False):
-        uri = 'places/' + self.uuid + '/objects.json'
+        uri = 'places/' + urllib.quote(self.uuid) + '/objects.json'
         return self._query(uri, checkins, notes, photos, raw=raw)
 
     def people(self, radius=None, hours_ago=None, raw=False):
+        uri = 'places/' + urlib.quote(self.uuid) + '/people.json'
         params = {}
         if radius is not None:
             params['radius'] = radius
         if hours_ago is not None:
             params['hours_ago'] = hours_ago
-        uri = 'places/' + self.uuid + '/people.json' + urllib.urlencode(params)
+        uri += urllib.urlencode(params)
         l = self.api._get(uri)
         if raw: return l
         return [Person(self, d['id'], d) for d in l]
 
     def placemarks(self, raw=False):
-        l = self.api._get('places/' + self.uuid + '/placemarks.json')
+        uri = 'places/' + urllib.quote(self.uuid) + '/placemarks.json'
+        l = self.api._get(uri)
         if raw: return l
         return [Place(self, d['id'], d) for d in l]
 

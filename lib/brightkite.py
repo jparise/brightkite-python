@@ -1,6 +1,8 @@
 # Brightkite API Library
 # http://groups.google.com/group/brightkite-api/web/rest-api
 
+import base64
+import httplib
 import json
 import urllib
 
@@ -9,30 +11,76 @@ __version__ = '0.9.0'
 
 __all__ = ['Brightkite', 'Object', 'Person', 'Place', 'Config']
 
-class AuthenticatingOpener(urllib.FancyURLopener):
-    __slots__ = ('user', 'password')
+SERVER = 'brightkite.com'
 
-    def __init__(self, user, password):
-        urllib.FancyURLopener.__init__(self)
-        self.user = user
+
+class BrightkiteException(Exception):
+    pass
+
+class BrightkiteHTTPException(BrightkiteException):
+
+    def __init__(self, url, code, msg):
+        self.url = method
+        self.code = code
+        self.msg = msg
+
+    def __str__(self):
+        return "HTTP {0}: {1} ({2})".format(self.url, self.code, self.msg)
+
+
+class NullAuth(object):
+    """No Authentication"""
+
+    def prepare(self, headers):
+        pass
+
+class BasicAuth(object):
+    """HTTP Basic Authentication"""
+
+    __slots__ = ['username', 'password']
+
+    def __init__(self, username, password):
+        self.username = username
         self.password = password
 
-    def prompt_user_passwd(self, host, realm):
-        return (self.user, self.password)
+    def prepare(self, headers):
+        s = base64.encodestring('%s:%s' % (self.username, self.password))[:-1]
+        headers['Authorization'] = 'Basic ' + s
 
 
 class Brightkite(object):
 
-    def __init__(self, user, password):
-        self.opener = AuthenticatingOpener(user, password)
+    def __init__(self, username, password, server=None):
+        if server is None:
+            server = SERVER
+        self.http = httplib.HTTPConnection(server)
+        self.auth = BasicAuth(username, password)
+
+    def _request(self, method, url, body=None, headers=None):
+        """Send an HTTP request and read the response data."""
+        if headers is None:
+            headers = dict()
+
+        self.auth.prepare(headers)
+
+        self.http.request(method, url, body, headers)
+        response = self.http.getresponse()
+        data = response.read()
+
+        if response.status != 200:
+            raise BrightkiteHTTPException(url, response.status, data)
+
+        return data
 
     def _get(self, uri):
         url = 'http://brightkite.com/' + uri
-        return json.load(self.opener.open(url))
+        data = self._request('GET', url)
+        return json.loads(data)
 
     def _post(self, uri, data):
         url = 'http://brightkite.com/' + uri
-        return json.load(self.opener.open(url, data))
+        data = self._request('POST', url)
+        return json.loads(data)
 
     def _put(self, uri, key, value):
         pass

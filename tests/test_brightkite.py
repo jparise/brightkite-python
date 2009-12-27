@@ -9,18 +9,6 @@ password = None
 PLACE_UUID  = '8fde23d6245c11debf73003048c0801e' # Brightkite (Burlingame)
 OBJECT_UUID = 'c09617edc7ff700faf66ec71a7646b2506e20035' # Moscone Center
 
-class TestAuthentication(unittest.TestCase):
-    """Test the authentication interface"""
-
-    def test_basic(self):
-        auth = brightkite.BasicAuth(username, password)
-        api = brightkite.Brightkite(auth)
-        self.assertEqual(api.me().login, username)
-
-    def test_oauth(self):
-        # TODO
-        pass
-
 class TestBrightkite(unittest.TestCase):
     """Test the basic Brightkite API"""
 

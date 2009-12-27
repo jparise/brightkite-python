@@ -13,7 +13,9 @@ class TestAuthentication(unittest.TestCase):
     """Test the authentication interface"""
 
     def test_basic(self):
-        api = brightkite.Brightkite(username, password)
+        auth = brightkite.BasicAuth(username, password)
+        api = brightkite.Brightkite(auth)
+        self.assertEqual(api.me().login, username)
 
     def test_oauth(self):
         # TODO
@@ -23,7 +25,8 @@ class TestBrightkite(unittest.TestCase):
     """Test the basic Brightkite API"""
 
     def setUp(self):
-        self.api = brightkite.Brightkite(username, password)
+        auth = brightkite.BasicAuth(username, password)
+        self.api = brightkite.Brightkite(auth)
 
     def tearDown(self):
         self.api = None

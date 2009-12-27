@@ -6,10 +6,19 @@ import httplib
 import json
 import urllib
 
+# The oauth module is optional (but recommended).  Attempting to use the
+# OAuth authentication class below when the oauth module is unavailable will
+# result in an immediate error.
+try:
+    import oauth.oauth as oauth
+except:
+    pass
+
 __author__  = 'Jon Parise <jon@indelible.org>'
 __version__ = '0.9.0'
 
-__all__ = ['Brightkite', 'Object', 'Person', 'Place', 'Config']
+__all__ = ['Brightkite', 'Object', 'Person', 'Place', 'Config',
+           'BasicAuth', 'OAuth']
 
 SERVER = 'brightkite.com'
 
@@ -20,19 +29,13 @@ class BrightkiteException(Exception):
 class BrightkiteHTTPException(BrightkiteException):
 
     def __init__(self, url, code, msg):
-        self.url = method
+        self.url = url
         self.code = code
         self.msg = msg
 
     def __str__(self):
         return "HTTP {0}: {1} ({2})".format(self.url, self.code, self.msg)
 
-
-class NullAuth(object):
-    """No Authentication"""
-
-    def prepare(self, headers):
-        pass
 
 class BasicAuth(object):
     """HTTP Basic Authentication"""
@@ -43,47 +46,117 @@ class BasicAuth(object):
         self.username = username
         self.password = password
 
-    def prepare(self, headers):
+    def prepare(self, method, url, params, token=None):
+        query = urllib.urlencode(params)
+        body = query if method == 'POST' else None
+        if len(query):
+            url += '?' + query
         s = base64.encodestring('%s:%s' % (self.username, self.password))[:-1]
-        headers['Authorization'] = 'Basic ' + s
+        return url, body, {'Authorization': 'Basic ' + s}
+
+class OAuth(object):
+    """OAuth Authentication"""
+
+    def __init__(self, key, secret, access_token=None):
+        self.key = key
+        self.consumer = oauth.OAuthConsumer(key, secret)
+        self.signature_method = oauth.OAuthSignatureMethod_HMAC_SHA1()
+        self.access_token = access_token
+
+    def prepare(self, method, url, params, token=None):
+        if token is None:
+            token = self.access_token
+
+        request = oauth.OAuthRequest.from_consumer_and_token(
+                self.consumer,
+                token=token,
+                http_method=method,
+                http_url=url,
+                parameters=params)
+        request.sign_request(self.signature_method, self.consumer, token)
+
+        if method == 'GET':
+            url = request.to_url()
+
+        body = None
+        if method == 'POST':
+            body = request.to_postdata()
+
+        return url, body, {}
 
 
 class Brightkite(object):
+    """Brightkite API"""
 
-    def __init__(self, username, password, server=None):
+    def __init__(self, auth, server=None, debug=False):
         if server is None:
             server = SERVER
+
+        self.auth = auth
         self.http = httplib.HTTPConnection(server)
-        self.auth = BasicAuth(username, password)
+        self.urlbase = 'http://' + server + '/'
 
-    def _request(self, method, url, body=None, headers=None):
+        if debug:
+            self.http.set_debuglevel(1)
+
+    def _request(self, method, url, params=None, token=None):
         """Send an HTTP request and read the response data."""
-        if headers is None:
-            headers = dict()
+        if params is None:
+            params = {}
 
-        self.auth.prepare(headers)
+        # Prepare the request by passing it through our authentication object.
+        # This will build the final URL (including encoding query parameters),
+        # POST body data, and HTTP headers.
+        url, body, headers = self.auth.prepare(method, url, params, token)
 
+        # If we have some POST body data, we need to set a few more HTTP
+        # headers in order for the request to be processed correctly.
+        if body is not None:
+            headers['Content-type'] = 'application/x-www-form-urlencoded'
+            headers['Accept'] = 'text/plain'
+
+        # Issue the HTTP request and read complete contents of the response.
+        # httplib requires us to drain the response data before we can issue
+        # another request.
         self.http.request(method, url, body, headers)
         response = self.http.getresponse()
         data = response.read()
 
+        # If we received anything other than a successful response, raise an
+        # exception to the caller and bail.  There's nothing more we can do.
         if response.status != 200:
             raise BrightkiteHTTPException(url, response.status, data)
 
         return data
 
-    def _get(self, uri):
-        url = 'http://brightkite.com/' + uri
-        data = self._request('GET', url)
+    def _get(self, uri, params=None):
+        data = self._request('GET', self.urlbase + uri, params)
         return json.loads(data)
 
-    def _post(self, uri, data):
-        url = 'http://brightkite.com/' + uri
-        data = self._request('POST', url)
+    def _post(self, uri, params=None):
+        data = self._request('POST', self.urlbase + uri, params)
         return json.loads(data)
 
-    def _put(self, uri, key, value):
-        pass
+    def oauth_request_token(self):
+        if not isinstance(self.auth, OAuth):
+            raise BrightkiteException('requires OAuth authentication')
+        data = self._request('GET', self.urlbase + 'oauth/request_token')
+        return oauth.OAuthToken.from_string(data)
+
+    def oauth_authorize(self, token):
+        if not isinstance(self.auth, OAuth):
+            raise BrightkiteException('requires OAuth authentication')
+        # Because we just want the authorization URL, we don't need to issue
+        # an actual HTTP request.  We can return the prepared URL directly.
+        url = self.urlbase + 'oauth/authorize'
+        return self.auth.prepare('GET', url, {}, token)[0]
+
+    def oauth_access_token(self, token):
+        if not isinstance(self.auth, OAuth):
+            raise BrightkiteException('requires OAuth authentication')
+        url = self.urlbase + 'oauth/access_token'
+        data = self._request('GET', url, token=token)
+        return oauth.OAuthToken.from_string(data)
 
     def me(self, raw=False):
         d = self._get('me.json')
@@ -96,7 +169,7 @@ class Brightkite(object):
         return Person(self, d['id'], d)
 
     def people(self, query, raw=False):
-        l = self._get('people/search.json?query=' + urllib.quote(query))
+        l = self._get('people/search.json', {'query': query})
         if raw: return l
         return [Person(self, d['id'], d) for d in l]
 
@@ -115,7 +188,7 @@ class Brightkite(object):
         return Object(self, uuid, d)
 
     def objects(self, query, raw=False):
-        l = self._get('objects/search.json?oquery=' + urllib.quote(query))
+        l = self._get('objects/search.json', {'oquery': query})
         if raw: return l
         if type(l) is not list: l = [l]
         return [Object(self, d['id'], d) for d in l]
@@ -126,7 +199,7 @@ class Brightkite(object):
         return Place(self, uuid, d)
 
     def places(self, query, raw=False):
-        l = self._get('places/search.json?q=' + urllib.quote(query))
+        l = self._get('places/search.json', {'q': query})
         if raw: return l
         if type(l) is not list: l = [l]
         return [Place(self, d['id'], d) for d in l]
@@ -174,10 +247,11 @@ class QueryObject(Object):
         if notes: filters.append('notes')
         if photos: filters.append('photos')
 
+        params = {}
         if filters:
-            uri += '?' + ','.join(filters)
+            params['filters'] = ','.join(filters)
 
-        l = self.api._get(uri)
+        l = self.api._get(uri, params)
         if raw: return l
         return [Object(self, d['id'], d) for d in l]
 
@@ -219,8 +293,7 @@ class Place(QueryObject):
             params['radius'] = radius
         if hours_ago is not None:
             params['hours_ago'] = hours_ago
-        uri += urllib.urlencode(params)
-        l = self.api._get(uri)
+        l = self.api._get(uri, params)
         if raw: return l
         return [Person(self, d['id'], d) for d in l]
 

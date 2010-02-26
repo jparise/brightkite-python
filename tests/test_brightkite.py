@@ -46,7 +46,7 @@ class TestBrightkite(unittest.TestCase):
     def test_objects(self):
         l = self.api.objects('Burlingame')
         self.assertTrue(len(l) >= 1)
-        self.assertTrue(locate(l, lambda o: o.place['name'] == 'Brightkite'))
+        self.assertTrue(locate(l, lambda o: o.place['name'] == 'Burlingame'))
 
     def test_place(self):
         o = self.api.place(PLACE_UUID)

@@ -20,7 +20,7 @@ __version__ = '0.9.0'
 __all__ = ['Brightkite', 'Object', 'Person', 'Place', 'Config',
            'BasicAuth', 'OAuth']
 
-SERVER = 'brightkite.com'
+SERVER = 'apps.brightkite.com'
 
 
 class BrightkiteException(Exception):
@@ -88,13 +88,18 @@ class OAuth(object):
 class Brightkite(object):
     """Brightkite API"""
 
-    def __init__(self, auth, server=None, debug=False):
+    def __init__(self, auth, server=None, secure=True, debug=False):
         if server is None:
             server = SERVER
 
         self.auth = auth
-        self.http = httplib.HTTPConnection(server)
-        self.urlbase = 'http://' + server + '/'
+
+        if secure:
+            self.http = httplib.HTTPSConnection(server)
+            self.urlbase = 'https://' + server + '/'
+        else:
+            self.http = httplib.HTTPConnection(server)
+            self.urlbase = 'http://' + server + '/'
 
         if debug:
             self.http.set_debuglevel(1)
@@ -115,7 +120,7 @@ class Brightkite(object):
             headers['Content-type'] = 'application/x-www-form-urlencoded'
             headers['Accept'] = 'text/plain'
 
-        # Issue the HTTP request and read complete contents of the response.
+        # Issue the request and read the complete contents of the response.
         # httplib requires us to drain the response data before we can issue
         # another request.
         self.http.request(method, url, body, headers)

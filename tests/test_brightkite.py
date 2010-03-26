@@ -77,6 +77,17 @@ class TestBrightkite(unittest.TestCase):
         config['description'] = description
         self.assertEqual(config['description'], description)
 
+    def test_blocks(self):
+        self.assertTrue(self.api.block('dumdummy'))
+        l = self.api.blocked()
+        self.assertTrue(len(l) >= 1)
+        self.assertTrue(locate(l, lambda o: o.login == 'dumdummy'))
+
+        self.assertTrue(self.api.unblock('dumdummy'))
+        l = self.api.blocked()
+        self.assertTrue(len(l) >= 0)
+        self.assertFalse(locate(l, lambda o: o.login == 'dumdummy'))
+
 def locate(l, pred):
     """Attempt to locate an entry in a sequence using the given predicate."""
     for o in l:

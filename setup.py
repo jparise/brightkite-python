@@ -2,6 +2,9 @@
 
 from distutils.core import setup
 
+import sys
+sys.path.append('lib')
+
 version = __import__('brightkite').__version__
 
 setup(

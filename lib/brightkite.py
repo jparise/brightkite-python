@@ -129,10 +129,13 @@ class Brightkite(object):
 
         # If we received anything other than a successful response, raise an
         # exception to the caller and bail.  There's nothing more we can do.
-        if response.status != 200:
+        if not response.status in (200, 201):
             raise BrightkiteHTTPException(url, response.status, data)
 
         return data
+
+    def _delete(self, uri):
+        self._request('DELETE', self.urlbase + uri)
 
     def _get(self, uri, params=None):
         data = self._request('GET', self.urlbase + uri, params)
@@ -227,6 +230,25 @@ class Brightkite(object):
         d = self._get('me/config.json')
         if raw: return d
         return Config(self, d)
+
+    def blocked(self, raw=False):
+        l = self._get('me/blocked.json')
+        if raw: return l
+        return [Person(self, d['id'], d) for d in l]
+
+    def block(self, user):
+        try:
+            self._post('people/' + urllib.quote(user) + '/block.json')
+            return True
+        except BrightkiteException:
+            return False
+
+    def unblock(self, user):
+        try:
+            self._delete('people/' + urllib.quote(user) + '/block.json')
+            return True
+        except BrightkiteException:
+            return False
 
 class Object(object):
 

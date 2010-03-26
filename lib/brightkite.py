@@ -48,7 +48,7 @@ class BasicAuth(object):
 
     def prepare(self, method, url, params, token=None):
         query = urllib.urlencode(params)
-        body = query if method == 'POST' else None
+        body = query if method in ('POST', 'PUT') else None
         if len(query):
             url += '?' + query
         s = base64.encodestring('%s:%s' % (self.username, self.password))[:-1]
@@ -79,7 +79,7 @@ class OAuth(object):
             url = request.to_url()
 
         body = None
-        if method == 'POST':
+        if method in ('POST', 'PUT'):
             body = request.to_postdata()
 
         return url, body, {}
@@ -141,6 +141,9 @@ class Brightkite(object):
     def _post(self, uri, params=None):
         data = self._request('POST', self.urlbase + uri, params)
         return json.loads(data)
+
+    def _put(self, uri, params=None):
+        self._request('PUT', self.urlbase + uri, params)
 
     def oauth_request_token(self):
         if not isinstance(self.auth, OAuth):
@@ -327,7 +330,7 @@ class Config(object):
         if name == 'api' or name == 'd':
             object.__setattr__(self, name, value)
         elif name in self.d:
-            # TODO: Send the HTTP PUT request
+            self.api._put('me/config.json', {'person[' + name + ']': value})
             self.d[name] = value
         else:
             raise AttributeError("invalid setting '%s'" % name)

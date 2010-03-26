@@ -311,29 +311,15 @@ class Place(QueryObject):
         if raw: return l
         return [Place(self, d['id'], d) for d in l]
 
-class Config(object):
+class Config(dict):
 
-    def __init__(self, api, d=None):
+    def __init__(self, api, d):
+        dict.__init__(self, d)
         self.api = api
-        self.d = d or dict()
 
-    def __repr__(self):
-        return '<%s login=%s>' % (self.__class__.__name__, self.login)
+    def __setitem__(self, key, value):
+        dict.__setitem__(self, key, value)
+        self.api._put('me/config.json', {'person[' + key + ']': value})
 
-    def __getattr__(self, name):
-        try:
-            return self.d[name]
-        except KeyError:
-            raise AttributeError("invalid setting '%s'" % name)
-
-    def __setattr__(self, name, value):
-        if name == 'api' or name == 'd':
-            object.__setattr__(self, name, value)
-        elif name in self.d:
-            self.api._put('me/config.json', {'person[' + name + ']': value})
-            self.d[name] = value
-        else:
-            raise AttributeError("invalid setting '%s'" % name)
-
-    def keys(self):
-        return self.d.keys()
+    def __delitem__(self, key):
+        raise NotImplementedError('settings cannot be deleted')

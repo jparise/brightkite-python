@@ -63,8 +63,19 @@ class TestBrightkite(unittest.TestCase):
         self.assertTrue(len(l) >= 0)
 
     def test_config(self):
-        o = self.api.config()
-        self.assertEqual(o.login, username)
+        config = self.api.config()
+        self.assertEqual(config['login'], username)
+
+        def deleter(): del config['description']
+        self.assertRaises(NotImplementedError, deleter)
+
+        description = config['description']
+        config['description'] = 'Test Description'
+        self.assertEqual(config['description'], 'Test Description')
+        config = self.api.config()
+        self.assertEqual(config['description'], 'Test Description')
+        config['description'] = description
+        self.assertEqual(config['description'], description)
 
 def locate(l, pred):
     """Attempt to locate an entry in a sequence using the given predicate."""

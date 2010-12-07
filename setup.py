@@ -13,7 +13,7 @@ setup(
     description="Brightkite API Library.",
     author="Jon Parise",
     author_email="jon@indelible.org",
-    url="http://bitbucket.org/jparise/python-brightkite/",
+    url="https://github.com/jparise/brightkite-python",
     package_dir = {'': 'lib'},
     py_modules = ['brightkite'],
     license = "MIT License",
